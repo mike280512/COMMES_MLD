@@ -9,7 +9,7 @@ All folders must be saved to the MATLAB path before running any examples or deve
 
 Contributions, suggestions and bug reports are welcome, contact michael.taylor-6@manchester.ac.uk
 
-COMMES_MLD is provided under the MIT licence.
+COMMES_MLD is provided under the GNU 3.0 licence.
 
 [1] S. Long, “Generalised Modelling Framework for Muli-Energy Systems With Model Predictive Control Applications,” Ph.D. dissertation, University of Manchester, 2019.
 
