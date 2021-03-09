@@ -12,5 +12,7 @@ Contributions, suggestions and bug reports are welcome, contact michael.taylor-6
 COMMES_MLD is provided under the MIT licence.
 
 [1] S. Long, “Generalised Modelling Framework for Muli-Energy Systems With Model Predictive Control Applications,” Ph.D. dissertation, University of Manchester, 2019.
+
 [2] A. Moser, D. Muschick, M. G¨olles, P. Nageler, H. Schranzhofer, T. Mach, C. Ribas Tugores, I. Leusbrock, S. Stark, F. Lackner, and A. Hofer, “A MILP-based modular energy management system for urban multi-energy systems: Performance and sensitivity analysis,” Applied Energy, 2020.
+
 [3] J. L¨ofberg, “Yalmip : A toolbox for modeling and optimization in matlab,” in In Proceedings of the CACSD Conference, Taipei, Taiwan, 2004.
