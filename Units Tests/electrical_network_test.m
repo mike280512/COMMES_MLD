@@ -35,10 +35,10 @@ adjMatrix = [   0,  lineImp,    0,          0;
                 0,  0,          0,          0];
 v1 = 1;
 PF = 0.9*ones(nHubs+1,1); %arbitrary values
-eNet = ElecNetworkModel('eNet',N,bigM,adjMatrix,v1,PF);
+eNet = ElecNetworkModel('eNet',N,bigM,adjMatrix,v1,PF,[]);
 eNet.add_val_cost('eNet_y_p1');
 for i = 2:size(adjMatrix,1)
-    eNet.change_bounds(strcat('eNet_y_v',num2str(i)),0.9811,1.1^2);
+    eNet.change_bounds(strcat('eNet_y_v',num2str(i)),0.9^2,1.1^2);
 end
 
 % District instantiation
