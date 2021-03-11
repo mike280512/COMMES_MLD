@@ -9,12 +9,13 @@ classdef ElecNetworkModel < Component
         arcs                    %connecting arcs (cell array)
         v1                      %reference voltage (p.u.) (scalar)
         PF                      %power factor (vector)
+        penalty                 %penalty to ensure exactness (scalar)
     end
     
     
     methods
         
-        function self = ElecNetworkModel(name,N,bigM,adjMatrix,v1,PF)
+        function self = ElecNetworkModel(name,N,bigM,adjMatrix,v1,PF,penalty)
             
             %call parent class constructor
             self@Component(name,N)
@@ -30,17 +31,27 @@ classdef ElecNetworkModel < Component
             self.bigM = bigM;
             self.arcs = self.get_arcs;
             self.v1 = v1;
-            self.PF = PF;
-            
+            if isempty(PF)
+                self.PF = 1; %default value for power factor
+            else
+                self.PF = PF;
+            end
+                        
             %initialise variables
             self.y = self.get_y;
             self.z = self.get_z;
+            self.m = self.get_m;
             
             %initialise constraints
             self.C = self.get_C;
             
             %add terms to objective function to ensure exact relaxation
-%             self.J = self.get_J;
+            if isempty(penalty)
+                self.penalty = []; %penalty term not added to objective
+            else
+                self.penalty = penalty;
+                self.J = self.get_J;
+            end
         end%constructor
         
         
@@ -71,7 +82,7 @@ classdef ElecNetworkModel < Component
             varNames_y_p = cell(size(self.adjMatrix,1),1);
             varNames_y_q = cell(size(self.adjMatrix,1),1);
             varNames_y_v = cell(size(self.adjMatrix,1),1);
-
+            
             for i = 1:length(varNames_y_p)
                 varName_y_p = [self.name,'_y_p',num2str(i)]; %define variable name
                 varName_y_q = [self.name,'_y_q',num2str(i)];
@@ -114,6 +125,23 @@ classdef ElecNetworkModel < Component
             end
             
             z = [z;varNames_z_P;varNames_z_Q;varNames_z_I];
+        end
+        
+        function m = get_m(self)
+            %initialies MLD system continuous auxiliary variables and returns cell array
+            m = self.m;
+            
+            varNames_m_maxI = cell(length(self.arcs),1);
+            
+            for i = 1:length(self.arcs)
+                varName_m_maxI = [self.name,'_m_maxI',self.arcs{i}]; %define variable name            
+                
+                self.vars.(matlab.lang.makeValidName(varName_m_maxI)) = sdpvar(self.N,1); %define sdpvar in vars struct
+                
+                varNames_m_maxI{i} = varName_m_maxI;
+            end
+            
+            m = [m;varNames_m_maxI];
         end
         
         function C = get_C(self)
@@ -268,30 +296,33 @@ classdef ElecNetworkModel < Component
                         varName_z_P = [self.name,'_z_P',num2str(i),'_',num2str(j)];
                         varName_z_Q = [self.name,'_z_Q',num2str(i),'_',num2str(j)];
                         varName_z_I = [self.name,'_z_I',num2str(i),'_',num2str(j)];
+                        varName_m_maxI = [self.name,'_m_maxI',num2str(i),'_',num2str(j)];
                         
                         var_z_P = self.vars.(matlab.lang.makeValidName(varName_z_P));
                         var_z_Q = self.vars.(matlab.lang.makeValidName(varName_z_Q));
                         var_z_I = self.vars.(matlab.lang.makeValidName(varName_z_I));
+                        var_m_maxI = self.vars.(matlab.lang.makeValidName(varName_m_maxI));
                         
                         C = C + [(-self.bigM <= var_z_P <= self.bigM):strcat(varName_z_P,'_bounds')];
                         C = C + [(-self.bigM <= var_z_Q <= self.bigM):strcat(varName_z_Q,'_bounds')];
-                        C = C + [(0 <= var_z_I <= self.bigM):strcat(varName_z_I,'_bounds')];
+                        C = C + [(zeros(self.N,1) <= var_z_I <= var_m_maxI):strcat(varName_z_I,'_bounds')]; %if user does not supply m_maxI...
+                        C = C + [(0 <= var_m_maxI <= self.bigM):strcat(varName_m_maxI,'_bounds')]; % ...default is bigM
                     end
                 end
             end
 
         end
         
-%         function J = get_J(self)
-%             %add objective terms to minimise line currents
-%             J = self.J;
-%             for i = 1:length(self.arcs)
-%                 varName_z_I = [self.name,'_z_I',self.arcs{i}];
-%                 var_z_I = self.vars.(matlab.lang.makeValidName(varName_z_I));
-%                 
-%                 J = J + ones(1,self.N)*var_z_I;
-%             end
-%         end
+        function J = get_J(self)
+            %add objective terms to minimise line currents
+            J = self.J;
+            for i = 1:length(self.arcs)
+                varName_z_I = [self.name,'_z_I',self.arcs{i}];
+                var_z_I = self.vars.(matlab.lang.makeValidName(varName_z_I));
+                
+                J = J + self.penalty*ones(1,self.N)*var_z_I;
+            end
+        end
         
     end
     

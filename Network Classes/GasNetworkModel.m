@@ -36,6 +36,7 @@ classdef GasNetworkModel < Component
             self.y = self.get_y;
             self.z = self.get_z;
             self.d = self.get_d;
+            self.m = self.get_m;
             
             %initialise constraints
             self.C = self.get_C;
@@ -126,6 +127,23 @@ classdef GasNetworkModel < Component
             d = [d;varNames_d_fwd];
         end
         
+        function m = get_m(self)
+            %initialies MLD system continuous auxiliary variables and returns cell array
+            m = self.m;
+            
+            varNames_m_maxDP = cell(length(self.arcs),1);
+            
+            for i = 1:length(self.arcs)
+                varName_m_maxDP = [self.name,'_m_maxDP',self.arcs{i}]; %define variable name            
+                
+                self.vars.(matlab.lang.makeValidName(varName_m_maxDP)) = sdpvar(self.N,1); %define sdpvar in vars struct
+                
+                varNames_m_maxDP{i} = varName_m_maxDP;
+            end
+            
+            m = [m;varNames_m_maxDP];
+        end
+        
         function C = get_C(self)
             %construct constraints for network model
             C = self.C; %constraints are added to existing lmi
@@ -214,12 +232,15 @@ classdef GasNetworkModel < Component
                     if self.adjMatrix(i,j) > 0
                         varName_z_F = [self.name,'_z_F',num2str(i),'_',num2str(j)];
                         varName_z_dp = [self.name,'_z_dp',num2str(i),'_',num2str(j)];
+                        varName_m_maxDP = [self.name,'_m_maxDP',num2str(i),'_',num2str(j)];
                         
                         var_z_F = self.vars.(matlab.lang.makeValidName(varName_z_F));
                         var_z_dp = self.vars.(matlab.lang.makeValidName(varName_z_dp));
-                        
+                        var_m_maxDP = self.vars.(matlab.lang.makeValidName(varName_m_maxDP));
+
                         C = C + [(-self.bigM <= var_z_F <= self.bigM):strcat(varName_z_F,'_bounds')];
-                        C = C + [(0 <= var_z_dp <= self.bigM):strcat(varName_z_dp,'_bounds')];
+                        C = C + [(zeros(self.N,1) <= var_z_dp <= var_m_maxDP):strcat(varName_z_dp,'_bounds')]; % if user does not supply m_maxDP...
+                        C = C + [(0 <= var_m_maxDP <= self.bigM):strcat(varName_m_maxDP,'_bounds')]; % ...default is bigM
                     end
                 end
             end

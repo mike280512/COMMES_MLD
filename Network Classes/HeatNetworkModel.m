@@ -36,6 +36,7 @@ classdef HeatNetworkModel < Component
             self.y = self.get_y;
             self.z = self.get_z;
             self.d = self.get_d;
+            self.m = self.get_m;
             
             %initialise constraints
             self.C = self.get_C;
@@ -152,6 +153,32 @@ classdef HeatNetworkModel < Component
             d = [d;varNames_d_pipe;varNames_d_pump];
         end
         
+        function m = get_m(self)
+            %initialies MLD system continuous auxiliary variables and returns cell array
+            m = self.m;
+            
+            varNames_m_maxHexDH = cell(size(self.adjMatrix,1),1);
+            varNames_m_maxPipeDH = cell(length(self.arcs),1);
+            
+            for i = 1:length(self.arcs)
+                varName_m_maxPipeDH = [self.name,'_m_maxPipeDH',self.arcs{i}];         
+                
+                self.vars.(matlab.lang.makeValidName(varName_m_maxPipeDH)) = sdpvar(self.N,1);
+                
+                varNames_m_maxPipeDH{i} = varName_m_maxPipeDH;
+            end
+            
+            for i = 1:size(self.adjMatrix,1)
+                varName_m_maxHexDH = [self.name,'_m_maxHexDH',num2str(i)]; %define variable name
+                
+                self.vars.(matlab.lang.makeValidName(varName_m_maxHexDH)) = sdpvar(self.N,1); %define sdpvar in vars struct
+                
+                varNames_m_maxHexDH{i} = varName_m_maxHexDH;
+            end
+            
+            m = [m;varNames_m_maxPipeDH;varNames_m_maxHexDH];
+        end
+        
         function C = get_C(self)
             %construct constraints for network model
             C = self.C; %constraints are added to existing lmi
@@ -264,8 +291,6 @@ classdef HeatNetworkModel < Component
                 C = C + [(var_z_wH - var_z_cH + var_z_hexDH - 2*self.bigM*(1 - var_d_pump) <= var_y_pumpDH):strcat(varName_z_pipeDH,'_relaxation_l_fwd')];
                 C = C + [(var_y_pumpDH <= var_z_cH - var_z_wH + var_z_hexDH + 2*self.bigM*var_d_pump):strcat(varName_z_pipeDH,'_relaxation_u_rev')];
                 C = C + [(var_y_pumpDH <= var_z_wH - var_z_cH + var_z_hexDH + 2*self.bigM*(1 - var_d_pump)):strcat(varName_z_pipeDH,'_relaxation_u_fwd')];
-%                 C = C + [(var_z_wH - var_z_cH + var_z_hexDH <= var_y_pumpDH):strcat(varName_y_pumpDH,'_fwd')];
-%                 C = C + [(var_z_cH - var_z_wH + var_z_hexDH <= var_y_pumpDH):strcat(varName_y_pumpDH,'_rev')];
             end
             
             %add default bounds
@@ -275,16 +300,19 @@ classdef HeatNetworkModel < Component
                 varName_z_hexDH = [self.name,'_z_hexDH',num2str(i)];
                 varName_z_wH = [self.name,'_z_wH',num2str(i)];
                 varName_z_cH = [self.name,'_z_cH',num2str(i)];
+                varName_m_maxHexDH = [self.name,'_m_maxHexDH',num2str(i)];
                 
                 var_y_phi = self.vars.(matlab.lang.makeValidName(varName_y_phi));
                 var_y_pumpDH = self.vars.(matlab.lang.makeValidName(varName_y_pumpDH));
                 var_z_hexDH = self.vars.(matlab.lang.makeValidName(varName_z_hexDH));
                 var_z_wH = self.vars.(matlab.lang.makeValidName(varName_z_wH));
                 var_z_cH = self.vars.(matlab.lang.makeValidName(varName_z_cH));
+                var_m_maxHexDH = self.vars.(matlab.lang.makeValidName(varName_m_maxHexDH));
                 
                 C = C + [(-self.bigM <= var_y_phi <= self.bigM):strcat(varName_y_phi,'_bounds')];
                 C = C + [(0 <= var_y_pumpDH <= self.bigM):strcat(varName_y_pumpDH,'_bounds')];
-                C = C + [(0 <= var_z_hexDH <= self.bigM):strcat(varName_z_hexDH,'_bounds')];
+                C = C + [(zeros(self.N,1) <= var_z_hexDH <= var_m_maxHexDH):strcat(varName_z_hexDH,'_bounds')]; %if user does not supply m_maxHexDH...
+                C = C + [(0 <= var_m_maxHexDH <= self.bigM):strcat(varName_m_maxHexDH,'_bounds')]; % ...default is bigM
                 C = C + [(0 <= var_z_wH <= self.bigM):strcat(varName_z_wH,'_bounds')];
                 C = C + [(0 <= var_z_cH <= self.bigM):strcat(varName_z_cH,'_bounds')];
             end
@@ -293,12 +321,15 @@ classdef HeatNetworkModel < Component
                     if self.adjMatrix(i,j) > 0
                         varName_z_Phi = [self.name,'_z_Phi',num2str(i),'_',num2str(j)];
                         varName_z_pipeDH = [self.name,'_z_pipeDH',num2str(i),'_',num2str(j)];
+                        varName_m_maxPipeDH = [self.name,'_m_maxPipeDH',num2str(i),'_',num2str(j)];
                         
                         var_z_Phi = self.vars.(matlab.lang.makeValidName(varName_z_Phi));
                         var_z_pipeDH = self.vars.(matlab.lang.makeValidName(varName_z_pipeDH));
+                        var_m_maxPipeDH = self.vars.(matlab.lang.makeValidName(varName_m_maxPipeDH));
                         
                         C = C + [(-self.bigM <= var_z_Phi <= self.bigM):strcat(varName_z_Phi,'_bounds')];
-                        C = C + [(0 <= var_z_pipeDH <= self.bigM):strcat(varName_z_pipeDH,'_bounds')];
+                        C = C + [(zeros(self.N,1) <= var_z_pipeDH <= var_m_maxPipeDH):strcat(varName_z_pipeDH,'_bounds')]; %if user does not supply m_maxPipeDH...
+                        C = C + [(0 <= var_m_maxPipeDH <= self.bigM):strcat(varName_m_maxPipeDH,'_bounds')]; % ...default is bigM
                     end
                 end
             end
