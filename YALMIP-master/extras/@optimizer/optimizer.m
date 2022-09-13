@@ -272,10 +272,10 @@ sys.model.infeasible = 0;
 % Could be done using
 [b,a,c] = find(sys.model.F_struc(1:prod(sys.dimin),2:end)');
 % but let us be safe
-% b = [];
-% for i = 1:prod(sys.dimin)
+%b = [];
+%for i = 1:prod(sys.dimin)
 %    b = [b;find(sys.model.F_struc(i,2:end))];
-% end
+%end
 sys.model.parameterIndex = b;
 used_in = find(any(sys.model.monomtable(:,b),2));
 Q = sys.model.Q;

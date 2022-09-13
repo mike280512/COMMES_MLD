@@ -254,6 +254,9 @@ switch varargin{1}
             end
             
             if ~found
+                if vec_isdoubles(i)                    
+                    y(i) = feval(varargin{2},X(i));
+                else
                 yi = y(i);
                 if isempty(Xi)
                      Xi = X(i);
@@ -277,7 +280,7 @@ switch varargin{1}
                 allNewExtendedIndex = [allNewExtendedIndex i];
                 availableHashes = [availableHashes new_hash];
                 correct_operator = [correct_operator length( internal_sdpvarstate.ExtendedMap)];
-                
+                 end
             end
         end
     
@@ -724,7 +727,7 @@ switch varargin{1}
         internal_sdpvarstate.auxVariables = [];
         internal_sdpvarstate.auxVariablesW = [];
         internal_sdpvarstate.logicVariables = [];
-        internal_sdpvarstate.complexpair = [];
+        ;internal_sdpvarstate.complexpair = [];
         internal_sdpvarstate.internalconstraints = [];
         internal_sdpvarstate.ExtendedMap = [];
         internal_sdpvarstate.ExtendedMapHashes = [];
@@ -1031,7 +1034,7 @@ switch varargin{1}
         
         
     case {'version','ver'}
-        varargout{1} = '20200930';
+        varargout{1} = '20210331';
         
     case 'setintvariables'
         internal_sdpvarstate.intVariables = varargin{2};

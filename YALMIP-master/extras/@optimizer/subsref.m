@@ -16,6 +16,8 @@ elseif isequal(subs.type,'.')
                 varargout{1} = self.model.options;
             case 'model'
                 varargout{1} = self.model;
+            case 'map'
+                varargout{1} = self.map;
             otherwise
                 error('Field not accesible. You can only acsess P.options')
         end
@@ -33,7 +35,7 @@ elseif isequal(subs.type,'{}')
         aux = {};
         for i = 1:length(subs.subs)
             if isa(subs.subs{i},'cell')
-                for j = 1:length(subs.subs{i})
+                for j = 1:length(subs.subs{i});
                     aux = {aux{:},subs.subs{i}{j}};
                 end
             else
@@ -407,6 +409,8 @@ elseif isequal(subs.type,'{}')
     else
         varargout{1} = u;
     end
+%     varargout{5} = self;
+%     varargout{6} = output;
 %     varargout{5} = self;
     varargout{5} = output;
 end
