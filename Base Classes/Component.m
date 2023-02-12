@@ -123,6 +123,58 @@ classdef Component < handle
                 disp('Error, new min and max constraints not added.')
             end
         end
+
+        function add_slack(self,varName,prefMin,prefMax,penalty)
+            %adds slack variable, additional bounds with slack variable and
+            %slack term in objective. Used in conjunction with
+            %change_bounds() (hard constraints) to define maximum deviation 
+            %from prefMin and prefMax.
+            
+            try
+            var = self.vars.(matlab.lang.makeValidName(varName)); %find variable sdpvar
+            catch
+                fprintf('Error in add_slack(): %s does not exist.\n',varName)
+                return
+            end
+            
+            %create slack variable
+            varName_z_slack = [varName,'_z_slack'];
+            self.vars.(matlab.lang.makeValidName(varName_z_slack)) = sdpvar(self.N,1);
+            var_z_slack = self.vars.(matlab.lang.makeValidName(varName_z_slack));
+            self.z = [self.z;varName_z_slack];
+            
+            %create varying min/max preference variables if preferences are
+            %empty
+            if isempty(prefMin)
+                varName_m_prefMin = [varName,'_m_prefMin'];
+                self.vars.(matlab.lang.makeValidName(varName_m_prefMin)) = sdpvar(self.N,1);
+                var_m_prefMin = self.vars.(matlab.lang.makeValidName(varName_m_prefMin));
+                self.m = [self.m;varName_m_prefMin];
+            end
+            if isempty(prefMax)
+                varName_m_prefMax = [varName,'_m_prefMax'];
+                self.vars.(matlab.lang.makeValidName(varName_m_prefMax)) = sdpvar(self.N,1);
+                var_m_prefMax = self.vars.(matlab.lang.makeValidName(varName_m_prefMax));
+                self.m = [self.m;varName_m_prefMax];
+            end
+            
+            %ensure slack variable is positive
+            self.C = self.C + [(0 <= var_z_slack):strcat(varName,'_slack_positivity')];
+            
+            %add soft constraints
+            if ~isempty(prefMin) && ~isempty(prefMax)
+                self.C = self.C + [(prefMin - var_z_slack <= var <= prefMax + var_z_slack):strcat(varName,'_slack')];
+            elseif ~isempty(prefMin) && isempty(prefMax)
+                self.C = self.C + [(prefMin - var_z_slack <= var <= var_m_prefMax + var_z_slack):strcat(varName,'_slack')];
+            elseif isempty(prefMin) && ~isempty(prefMax)
+                self.C = self.C + [(var_m_prefMin - var_z_slack <= var <= prefMax + var_z_slack):strcat(varName,'_slack')];
+            else
+                self.C = self.C + [(var_m_prefMin - var_z_slack <= var <= var_m_prefMax + var_z_slack):strcat(varName,'_slack')];
+            end
+            
+            %add penalty term in objective function
+            self.J = self.J + penalty*ones(1,self.N)*var_z_slack;
+        end
         
         function connect(self,varNameSrc,varNameSnk,coef)
             %adds a constraint var1 == coef*var2
